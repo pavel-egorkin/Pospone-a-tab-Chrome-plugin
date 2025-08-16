@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="32 32 192 192" width="384px" height="384px">
+  <g stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="128" cy="128" r="96" style="fill: rgb(15, 23, 42);"/>
+    <line x1="128" y1="32" x2="128" y2="52" style="fill: rgb(186, 218, 85);"/>
+    <line x1="224" y1="128" x2="204" y2="128" style="fill: rgb(186, 218, 85);"/>
+    <line x1="128" y1="224" x2="128" y2="204" style="fill: rgb(186, 218, 85);"/>
+    <line x1="32" y1="128" x2="52" y2="128" style="fill: rgb(186, 218, 85);"/>
+    <g>
+      <line x1="128" y1="128" x2="98" y2="88" style="paint-order: stroke; fill: rgb(248, 250, 252); stroke: rgb(248, 250, 252);"/>
+      <line x1="128" y1="128" x2="172" y2="100" style="fill: rgb(248, 250, 252); stroke: rgb(248, 250, 252);"/>
+    </g>
+  </g>
+  <g transform="matrix(1, 0, 0, 1, 128, 128.00000000000003)">
+    <path d="M -16 -24 L 16 -24 L 16 16 L -24 16 L -24 -8 L -16 -16 Z" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" style="fill: rgb(148, 163, 184);"/>
+  </g>
+</svg>

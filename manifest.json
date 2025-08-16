@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "BackLater",
+  "version": "0.1.0",
+  "description": "Hide a tab now. Get it back exactly when you want.",
+  "action": {
+    "default_title": "Snooze this tab",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "sw.js"
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "permissions": ["tabs", "storage", "alarms", "notifications", "activeTab"],
+  "commands": {
+    "snooze-active": { "description": "Snooze active tab" },
+    "open-sleeping": { "description": "Open Sleeping Tabs list" },
+    "repeat-last-snooze": { "description": "Repeat last snooze" },
+    "new-todo-tab": { "description": "New to-do tab" }
+  }
+}

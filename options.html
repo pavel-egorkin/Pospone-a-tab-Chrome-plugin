@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>BackLater – Settings</title>
+	<style>
+		body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; background:#F9FAFB; color:#0F172A; }
+		.field { margin: 12px 0; }
+		label { display:block; margin-bottom:6px; }
+		input[type="number"], select { padding:6px; border:1px solid #E5E7EB; border-radius:6px; background:#fff; }
+		button { padding:8px 12px; border:1px solid #E5E7EB; border-radius:6px; background:#fff; cursor:pointer; }
+		button.primary { background:#0F172A; color:#fff; border-color:#0F172A; }
+		hr { border:none; border-top:1px solid #E5E7EB; margin:16px 0; }
+		.danger { color:#B91C1C; }
+	</style>
+</head>
+<body>
+	<h1>Settings</h1>
+	<div class="field"><label><input type="checkbox" id="notif"> Wake-up notification</label></div>
+	<div class="field"><label>Tomorrow starts at (hour 0–23)</label><input id="tomorrow" type="number" min="0" max="23"></div>
+	<div class="field"><label>Evening starts at (fixed 19)</label><input id="evening" type="number" min="0" max="23" disabled value="19"></div>
+	<div class="field"><label>Later Today offset (hours)</label><input id="later" type="number" min="1" max="12"></div>
+	<div class="field"><label>Someday default (months)</label><input id="someday" type="number" min="1" max="24"></div>
+	<div class="field"><label>Default time for date picker (hour 0–23)</label><input id="defaultHour" type="number" min="0" max="23"></div>
+	<div class="field"><label>Week starts on</label><input type="text" value="Monday" disabled></div>
+	<div class="field"><button class="primary" id="save">Save</button></div>
+	<hr>
+	<h2>Danger zone</h2>
+	<p class="danger">Delete all snoozes and recurrences (no undo)</p>
+	<button id="deleteAll">Delete all</button>
+
+	<script src="options.js"></script>
+</body>
+</html>

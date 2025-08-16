@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>BackLater – Pick a Date</title>
+	<style>
+		body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; background:#F9FAFB; color:#0F172A; }
+		.field { margin: 12px 0; }
+		label { display:block; margin-bottom:6px; }
+		input[type="date"], input[type="time"] { padding:6px; border:1px solid #E5E7EB; border-radius:6px; background:#fff; }
+		button { padding:8px 12px; border:1px solid #E5E7EB; border-radius:6px; background:#fff; cursor:pointer; }
+		button.primary { background:#0F172A; color:#fff; border-color:#0F172A; }
+	</style>
+</head>
+<body>
+	<h1>Pick a Date</h1>
+	<div class="field"><label>Date</label><input id="date" type="date"></div>
+	<div class="field"><label>Time</label><input id="time" type="time" step="1800"></div>
+	<div class="field"><button id="create" class="primary">Snooze</button></div>
+	<script src="pick.js"></script>
+</body>
+</html>
