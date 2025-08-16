@@ -14,8 +14,8 @@
 - **Quick Snooze popup** with fast presets
 - **Pick a Date** calendar with time selector.
 - **Recurring (Repeatedly)** schedules (e.g., every Wed 9:00).
-- **Postponed Tabs list** to view, search, reschedule, wake now, 
-- **Optional notification** (click to open) and optional **toolbar badge** with count.
+- **Sleeping Tabs list** to view, reschedule, wake, delete
+- **Notifications** (click to open new) and optional **toolbar badge** with total upcoming count.
 - **Configurable Keyboard shortcuts** for power use.
 - Do not work in Incognito mode
 - Manifest V3, minimal permissions, privacy‑first.
@@ -64,7 +64,16 @@ Open from the toolbar button or via keyboard shortcut.
 
 **Rules & microcopy**
 - Subtitles may show the resolved time, e.g., “Later Today — in 3h”.
-- Disable a preset if it would land in the past (e.g., “This Evening” after cut‑off).
+
+### Preset semantics
+- Later Today: now + 3 hours (local). If it crosses midnight, schedule for tomorrow at “Tomorrow starts at”.
+- This Evening: today at 19:00 local. If after 19:00, schedule for tomorrow at 19:00.
+- Tomorrow: tomorrow at “Tomorrow starts at”.
+- Next Week: upcoming Monday at the Default time.
+- Next Weekend: upcoming Saturday at the Default time.
+- In a Month: same day-of-month next month at the Default time (if day doesn’t exist, schedule for the 1st).
+- Someday: +3 months at the Default time.
+- All computations use the local device time and date; UTC is used for storage.
 
 ---
 
@@ -89,23 +98,29 @@ Open from the toolbar button or via keyboard shortcut.
 
 **Behavior:**
 - Each recurrence re‑opens the tab and then schedules the next run.
-- You can **Pause**, **Edit**, or **Delete** a recurrence from the Sleeping Tabs list.
+- Missed runs (browser closed) fire immediately on startup, then the next run is scheduled.
+- Weekly: supports multiple weekdays within a single recurrence; `nextFireAt` is computed to the nearest future selected weekday at the chosen time.
+- Monthly: if the selected day does not exist in a month (29–31), the run executes on the 1st of that month.
+- Times are stable in local wall‑clock time across DST and travel (always fire at the chosen local time).
+- Recurrences can be **Edited** or **Deleted** from the Sleeping Tabs list. Pause/Resume is not supported.
 
 ---
 
 ### 4) Sleeping Tabs list
-Window with two sections: **Upcoming** and **History**.
+Window listing **Upcoming** snoozes.
 
 - Grouping: **Today**, **Tomorrow**, **This Week**, **Later**
-- Row: favicon, title, scheduled time, actions **Wake**, **Reschedule**, **Delete**
-- **Search** by title/URL
+- Group boundaries: Week starts on Monday. “Today” = due before end of today; “Tomorrow” = due tomorrow; “This Week” = remainder of current week excluding today/tomorrow; “Later” = beyond this week.
+- Sorting: earliest to latest within each group.
+- Row: title, scheduled time, actions **Wake**, **Reschedule**, **Delete**
 - **FAB +** → **New to‑do tab** (opens a blank tab or notes URL, then snooze it)
 
 ---
 
 ### 5) Notifications & badge (optional)
-- When a tab wakes: desktop notification; click focuses the tab.
-- **Toolbar badge**: Hidden / 1–9 / 9+ count.
+- When a tab wakes: desktop notification; clicking the notification opens a new tab to the scheduled URL.
+- If multiple tabs wake at once: open all, then show a summary notification like “n tabs re‑opened”.
+- **Toolbar badge**: shows total upcoming count; updates on change (create, edit, delete, wake).
 
 ---
 
@@ -116,6 +131,8 @@ Window with two sections: **Upcoming** and **History**.
 - **Repeat last snooze:** `Alt+Shift+S`
 - **New to‑do tab:** `Alt+1`
 
+“Repeat last snooze” repeats the last non‑recurring snooze (either a preset or a custom date from Pick a Date).
+
 ---
 
 ## Settings
@@ -125,14 +142,13 @@ Window with two sections: **Upcoming** and **History**.
 ### Presets
 - **Tomorrow starts at** `08:00`
 - **Evening starts at** `19:00`
-- **Week starts on** Mon/Sun
-- **Weekend starts on** Sat/Fri
+- **Week starts on** Monday (fixed)
 - **Later Today** offset (e.g., `+3h`)
 - **Someday** default (e.g., `+3 months`)
 - **Default time** for date picker
 
 
-- **Danger zone**: Delete all snoozes
+- **Danger zone**: Delete all snoozes (confirmation dialog; no undo)
 
 ---
 
@@ -140,8 +156,7 @@ Window with two sections: **Upcoming** and **History**.
 - **Service worker** (background): schedules, alarms, storage, notifications.
 - **Popup UI**: presets grid, routes to date/recurring modals.
 - **Options page**: settings & data management.
-- **Sleeping Tabs page**: list, search, bulk actions.
-- **Offscreen document** (optional) to play sounds.
+- **Sleeping Tabs page**: list and item actions.
 
 ### Data model
 ```ts
@@ -151,9 +166,6 @@ export type Snooze = {
   title?: string;
   createdAt: string;          // ISO UTC
   fireAt: string;             // ISO UTC
-  windowType: 'normal'|'incognito';
-  pinned?: boolean;
-  note?: string;              // optional user note
   recurrenceId?: string;      // link if generated by a recurrence
 };
 
@@ -161,36 +173,36 @@ export type Recurrence = {
   id: string;                 // uuid
   kind: 'daily'|'weekly'|'monthly';
   daysOfWeek?: number[];      // 0..6, Sun..Sat (for weekly)
+  dayOfMonth?: number;        // 1..31 (for monthly)
   hour: number;               // 0..23
   minute: number;             // 0..59
   url: string;
   title?: string;
   nextFireAt: string;         // computed UTC
-  paused?: boolean;
 };
 
 ## Scheduling
 
-- Use `chrome.alarms.create(id, { when })` with UTC timestamps.
-- On alarm: validate URL, open in last-active window; if none, create a new window; focus the tab.
+- Use one `chrome.alarms.create(id, { when })` per snooze/recurrence instance with UTC timestamps.
+- Alarm IDs use namespaces like `snooze:{id}` and `recur:{id}` to avoid collisions.
+- On alarm: validate URL, open in the last-active normal window; if none, create a new normal window; focus the tab. Remove the item immediately upon open. If opening fails, keep it and retry on next browser launch.
+- On startup/cold start: reconcile storage and create any missing alarms; fire missed alarms immediately.
+- System sleep: if time passed while asleep, fire immediately on resume.
 
 ## Storage strategy
 
-- Default: `chrome.storage.local`.
-- Optional: **Sync** mode for small sets via `chrome.storage.sync` (100KB quota; toggle in Settings).
+- Default: `chrome.storage.local` only (no sync).
+- Capacity: up to 500 scheduled items (snoozes + recurrences). Exceeding attempts are rejected with user feedback.
 
 ## Permissions (minimal)
 
 ```json
 {
-  "permissions": ["tabs", "storage", "alarms", "notifications", "contextMenus"],
-  "host_permissions": ["<all_urls>"],
-  "optional_host_permissions": ["<all_urls>"],
+  "permissions": ["tabs", "storage", "alarms", "notifications"],
   "action": { "default_popup": "popup.html" }
 }
 ```
 
-- Prefer `optional_host_permissions` — request on first use.
 - Avoid content scripts unless strictly needed.
 
 ## Security notes
@@ -198,7 +210,7 @@ export type Recurrence = {
 - Treat cross-component messages as untrusted; verify structure and origin.
 - Sanitize all user inputs in Settings and custom dates.
 - Store only URL + title + schedule; no page content.
-- Enterprise policy hooks: disable notifications, enforce storage scope, block hostnames.
+- Validate message shapes at runtime (e.g., lightweight schema checks / type guards).
 
 ## Manifest (skeleton)
 
@@ -212,15 +224,14 @@ export type Recurrence = {
   "background": { "service_worker": "sw.js" },
   "options_page": "options.html",
   "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" },
-  "permissions": ["tabs", "storage", "alarms", "notifications", "contextMenus"],
-  "optional_host_permissions": ["<all_urls>"]
+  "permissions": ["tabs", "storage", "alarms", "notifications"]
 }
 ```
 
 ## Compliance checklist
 
 - Adhere to MV3 best practices: https://developer.chrome.com/docs/webstore/best-practices#manifest_version_3  
-- Request minimal permissions; prefer optional host permissions.  
+- Request minimal permissions.  
 - Validate & sanitize all inputs (settings, custom dates).  
 - Verify `runtime.onMessage` senders; ignore unexpected origins.  
 - Test across latest Chromium variants (Chrome, Edge, Brave, Vivaldi, Arc).
@@ -230,7 +241,7 @@ export type Recurrence = {
 - **Stack:** vanilla JS (optionally Vite/ESBuild for bundling; no Node APIs in SW).
 - **Run:** Load unpacked at `chrome://extensions` → Developer mode → Load unpacked.
 - **Shortcuts:** configure at `chrome://extensions/shortcuts`.
-- **Testing matrix:** Chrome, Edge, Brave, Arc, Vivaldi; light/dark; normal/incognito.
+- **Testing matrix:** Chrome, Edge, Brave, Arc, Vivaldi; light/dark.
 
 ## Accessibility
 
@@ -238,6 +249,7 @@ export type Recurrence = {
 - Focus outlines visible; contrasts meet WCAG AA.
 - Screen-reader labels for tiles and actions.
 - Time & date respect user locale (`Intl.DateTimeFormat`).
+- Use 24‑hour time in UI; week starts on Monday.
 
 ## Privacy
 
@@ -253,7 +265,7 @@ export type Recurrence = {
 - What happens if the browser is closed at the scheduled time? 
 The alarm fires at next startup; BackLater opens the tab immediately.
 - Do I need host permissions for every site? 
-Only when capturing the current tab’s URL/title; request once on first use.
+No. The extension uses minimal permissions (`tabs`, `storage`, `alarms`, `notifications`) and does not request host permissions.
 
 License
 
