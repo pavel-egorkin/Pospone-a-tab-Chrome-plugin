@@ -1,4 +1,4 @@
-// BackLater MV3 Service Worker
+// Reopen Tab Later MV3 Service Worker
 // Minimal, single-file implementation of storage, time rules, scheduling, notifications, badge, and messaging.
 
 // -----------------------------

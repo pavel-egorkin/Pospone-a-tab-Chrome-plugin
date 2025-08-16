@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "BackLater",
+  "name": "Reopen Tab Later",
   "version": "0.1.0",
-  "description": "Hide a tab now. Get it back exactly when you want.",
+  "description": "Reopen tabs later - hide a tab now and get it back exactly when you want.",
   "action": {
     "default_title": "Snooze this tab",
     "default_popup": "popup.html"

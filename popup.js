@@ -1,11 +1,9 @@
 const PRESETS = [
 	{ id: 'later-today', label: 'Later Today' },
-	{ id: 'this-evening', label: 'This Evening' },
 	{ id: 'tomorrow', label: 'Tomorrow' },
 	{ id: 'next-weekend', label: 'Next Weekend' },
 	{ id: 'next-week', label: 'Next Week' },
 	{ id: 'in-a-month', label: 'In a Month' },
-	{ id: 'someday', label: 'Someday' },
 	{ id: 'repeatedly', label: 'Repeatedly' },
 	{ id: 'pick-a-date', label: 'Pick a Date' }
 ];

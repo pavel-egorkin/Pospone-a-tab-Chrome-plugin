@@ -1,11 +1,11 @@
-# BackLater — snooze tabs, get them back exactly on time
+# Reopen Tab Later — snooze tabs, get them back exactly on time
 
 **Chromium extension** that hides the current tab and re‑opens it at the date/time you choose — when you’ll actually have time to process it.
 
 ---
 
 ## Why use it
-- “Read‑later” lists pile up. Browser tabs pile up even harder. **BackLater** puts pages **out of sight** and **back in your flow** at the right moment.
+- "Read‑later" lists pile up. Browser tabs pile up even harder. **Reopen Tab Later** puts pages **out of sight** and **back in your flow** at the right moment.
 - Your future self shouldn’t hunt for the right tab — it should reappear **precisely** when needed.
 
 ---
@@ -217,9 +217,9 @@ export type Recurrence = {
 ```json
 {
   "manifest_version": 3,
-  "name": "BackLater",
+  "name": "Reopen Tab Later",
   "version": "0.1.0",
-  "description": "Hide a tab now. Get it back exactly when you want.",
+  "description": "Reopen tabs later - hide a tab now and get it back exactly when you want.",
   "action": { "default_title": "Snooze this tab", "default_popup": "popup.html" },
   "background": { "service_worker": "sw.js" },
   "options_page": "options.html",
@@ -263,7 +263,7 @@ export type Recurrence = {
 ## FAQ
 
 - What happens if the browser is closed at the scheduled time? 
-The alarm fires at next startup; BackLater opens the tab immediately.
+The alarm fires at next startup; Reopen Tab Later opens the tab immediately.
 - Do I need host permissions for every site? 
 No. The extension uses minimal permissions (`tabs`, `storage`, `alarms`, `notifications`) and does not request host permissions.
 
