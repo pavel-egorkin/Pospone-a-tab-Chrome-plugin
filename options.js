@@ -39,4 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	load();
 	$('save').addEventListener('click', save);
 	$('deleteAll').addEventListener('click', deleteAll);
+	const testBtn = document.getElementById('testNotif');
+	if (testBtn) {
+		testBtn.addEventListener('click', async () => {
+			const res = await sendMessage('testNotification');
+			if (!res.ok) alert('Notification failed: ' + (res.error || 'Unknown error'));
+		});
+	}
 });

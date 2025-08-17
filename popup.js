@@ -1,4 +1,5 @@
 const PRESETS = [
+	{ id: '1-minute', label: '1 Minute' },
 	{ id: 'later-today', label: 'Later Today' },
 	{ id: 'tomorrow', label: 'Tomorrow' },
 	{ id: 'next-weekend', label: 'Next Weekend' },
@@ -54,6 +55,10 @@ async function onTile(id) {
 	const fireAtIso = res.data;
 	const created = await sendMessage('createSnooze', { url, title, fireAtIso, source: { kind: 'preset', preset: id } });
 	if (!created.ok) return alert(created.error || 'Failed');
+	// Close the current tab after successfully creating the snooze
+	if (tab?.id) {
+		await chrome.tabs.remove(tab.id);
+	}
 	window.close();
 }
 

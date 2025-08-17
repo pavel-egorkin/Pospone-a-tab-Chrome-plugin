@@ -27,6 +27,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 		const fireAtIso = toIsoUtcLocal(date, time);
 		const res = await sendMessage('createSnooze', { url, title, fireAtIso, source: { kind: 'custom', customTimeIso: fireAtIso } });
 		if (!res.ok) return alert(res.error || 'Failed');
+		// Close the current tab after successfully creating the snooze
+		if (tab?.id) {
+			await chrome.tabs.remove(tab.id);
+		}
 		window.close();
 	});
 });

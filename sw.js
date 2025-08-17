@@ -137,6 +137,10 @@ async function resolvePreset(preset) {
   }
 
   switch (preset) {
+    case '1-minute': {
+      target = new Date(now.getTime() + 60 * 1000); // 60 seconds = 1 minute
+      break;
+    }
     case 'later-today': {
       target = new Date(now.getTime() + s.laterTodayOffsetHours * 60 * 60 * 1000);
       if (target > endOfToday) {
@@ -281,9 +285,9 @@ async function openUrlInWindow(url) {
       if (normal) windowId = normal.id;
     }
     if (windowId) {
-      await chrome.tabs.create({ windowId, url, pinned: false, active: true });
+      await chrome.tabs.create({ windowId, url, pinned: false, active: false });
     } else {
-      const win = await chrome.windows.create({ url, focused: true, type: 'normal' });
+      const win = await chrome.windows.create({ url, focused: false, type: 'normal' });
       lastActiveNormalWindowId = win.id || null;
     }
     return true;
@@ -313,22 +317,36 @@ async function handleSnoozeFire(snoozeIds) {
 
   const settings = await getSettings();
   if (settings.wakeNotificationEnabled) {
-    if (results.length === 1) {
-      const s = results[0];
-      await chrome.notifications.create(`wake:${s.id}`, {
-        type: 'basic',
-        iconUrl: 'icons/48.png',
-        title: 'Tab re-opened',
-        message: s.title || s.url
-      });
-    } else if (results.length > 1) {
-      await chrome.notifications.create('wake:summary', {
-        type: 'basic',
-        iconUrl: 'icons/48.png',
-        title: 'Tabs re-opened',
-        message: `${results.length} tabs re-opened`
-      });
+    try {
+      if (results.length === 1) {
+        const s = results[0];
+        await chrome.notifications.create(`wake:${s.id}`, {
+          type: 'basic',
+          iconUrl: 'icons/128.png',
+          title: 'Tab re-opened',
+          message: s.title || s.url,
+          priority: 2,
+          silent: false,
+          requireInteraction: false
+        });
+        console.log('Notification created for tab:', s.title || s.url);
+      } else if (results.length > 1) {
+        await chrome.notifications.create('wake:summary', {
+          type: 'basic',
+          iconUrl: 'icons/128.png',
+          title: 'Tabs re-opened',
+          message: `${results.length} tabs re-opened`,
+          priority: 2,
+          silent: false,
+          requireInteraction: false
+        });
+        console.log('Summary notification created for', results.length, 'tabs');
+      }
+    } catch (e) {
+      console.warn('Failed to create notification:', e);
     }
+  } else {
+    console.log('Wake notifications are disabled in settings');
   }
 }
 
@@ -371,6 +389,20 @@ async function handleMessage(request, sender) {
   const { type, payload } = request || {};
   try {
     switch (type) {
+      case 'testNotification': {
+        try {
+          await chrome.notifications.create('test:notif', {
+            type: 'basic',
+            iconUrl: 'icons/128.png',
+            title: 'Reopen Tab Later',
+            message: 'Test notification',
+            priority: 2
+          });
+          return { ok: true };
+        } catch (e) {
+          return { ok: false, error: e?.message || String(e) };
+        }
+      }
       case 'getSettings': {
         const s = await getSettings();
         return { ok: true, data: s };
@@ -521,7 +553,11 @@ chrome.commands.onCommand.addListener(async (command) => {
     const url = tab?.url || 'chrome://newtab/';
     const title = tab?.title || 'Tab';
     const fireAtIso = await resolvePreset('later-today');
-    await handleMessage({ type: 'createSnooze', payload: { url, title, fireAtIso, source: { kind: 'preset', preset: 'later-today' } } });
+    const result = await handleMessage({ type: 'createSnooze', payload: { url, title, fireAtIso, source: { kind: 'preset', preset: 'later-today' } } });
+    // Close the tab after successfully creating the snooze
+    if (result.ok && tab?.id) {
+      await chrome.tabs.remove(tab.id);
+    }
   } else if (command === 'repeat-last-snooze') {
     await handleMessage({ type: 'repeatLast' });
   } else if (command === 'new-todo-tab') {
