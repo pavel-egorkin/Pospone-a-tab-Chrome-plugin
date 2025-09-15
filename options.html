@@ -1,36 +1,95 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>Reopen Tab Later – Settings</title>
-	<style>
-		body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; background:#F9FAFB; color:#0F172A; }
-		.field { margin: 12px 0; }
-		label { display:block; margin-bottom:6px; }
-		input[type="number"], select { padding:6px; border:1px solid #E5E7EB; border-radius:6px; background:#fff; }
-		button { padding:8px 12px; border:1px solid #E5E7EB; border-radius:6px; background:#fff; cursor:pointer; }
-		button.primary { background:#0F172A; color:#fff; border-color:#0F172A; }
-		hr { border:none; border-top:1px solid #E5E7EB; margin:16px 0; }
-		.danger { color:#B91C1C; }
-	</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reopen Tab Later – Settings</title>
+  <style>
+    :root{
+      --bg:#1B1B1F; --on-hi:rgba(255,255,255,.92);
+      --on:rgba(255,255,255,.86); --on-med:rgba(255,255,255,.65);
+      --div:rgba(255,255,255,.08); --accent:#F2C44A;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; padding:24px;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--on);
+      background: var(--bg);
+    }
+    .panel{
+      width:100%; max-width:720px; margin:0 auto;
+      background: rgba(27,27,31,.95);
+      -webkit-backdrop-filter: saturate(120%) blur(18px);
+      backdrop-filter: saturate(120%) blur(18px);
+      border-radius:12px; padding:18px 18px 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.42), 0 2px 8px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.06);
+    }
+    h1{
+      margin:4px 0 14px 0; font:700 18px/24px Inter, system-ui; color:var(--on-hi);
+    }
+    .section{ padding:6px 10px; }
+    .row{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:10px 0; }
+    .label{ font:600 14px/20px Inter, system-ui; color:var(--on-hi); }
+    .note{ font:500 13px/18px Inter, system-ui; color:var(--on-med); margin:4px 0 0; }
+    hr{ border:none; border-top:1px solid rgba(255,255,255,.12); margin:10px 0; }
+
+    /* Buttons */
+    .btn{ appearance:none; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:var(--on-hi); border-radius:10px; padding:8px 12px; font:600 12px/1 Inter, system-ui; cursor:pointer; transition: background-color .12s ease, transform .06s ease, border-color .12s ease, color .12s ease; }
+    .btn:hover{ background:rgba(255,255,255,.09); }
+    .btn:active{ transform: translateY(.5px); }
+    .btn:focus-visible{ outline:none; box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px rgba(242,196,74,.22); }
+    .btn.danger{ background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.35); color:#FCA5A5; }
+    .btn.danger:hover{ background: rgba(239,68,68,.22); }
+
+    /* Toggle */
+    .toggle{ display:flex; align-items:center; gap:12px; }
+    .toggle-input{ position:absolute; opacity:0; width:1px; height:1px; pointer-events:none; }
+    .toggle-track{
+      position:relative; width:44px; height:26px; border-radius:999px;
+      background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+      transition: background-color .12s ease, border-color .12s ease, box-shadow .12s ease;
+    }
+    .toggle-track::after{
+      content:""; position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:999px;
+      background: rgba(255,255,255,.9); transition: left .12s ease, background-color .12s ease;
+    }
+    .toggle-input:focus-visible + .toggle-track{ box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px rgba(242,196,74,.22); }
+    .toggle-input:checked + .toggle-track{ background: var(--accent); border-color: transparent; }
+    .toggle-input:checked + .toggle-track::after{ left:20px; background:#1B1B1F; }
+  </style>
+  <!-- Using system fonts to match popup; no remote font loads -->
 </head>
 <body>
-	<h1>Settings</h1>
-	<div class="field"><label><input type="checkbox" id="notif"> Wake-up notification</label></div>
-	<div class="field"><label>Tomorrow starts at (hour 0–23)</label><input id="tomorrow" type="number" min="0" max="23"></div>
-	<div class="field"><label>Evening starts at (fixed 19)</label><input id="evening" type="number" min="0" max="23" disabled value="19"></div>
-	<div class="field"><label>Later Today offset (hours)</label><input id="later" type="number" min="1" max="12"></div>
-	<div class="field"><label>Someday default (months)</label><input id="someday" type="number" min="1" max="24"></div>
-	<div class="field"><label>Default time for date picker (hour 0–23)</label><input id="defaultHour" type="number" min="0" max="23"></div>
-	<div class="field"><label>Week starts on</label><input type="text" value="Monday" disabled></div>
-	<div class="field"><button class="primary" id="save">Save</button></div>
-	<div class="field"><button id="testNotif">Test notification</button></div>
-	<hr>
-	<h2>Danger zone</h2>
-	<p class="danger">Delete all snoozes and recurrences (no undo)</p>
-	<button id="deleteAll">Delete all</button>
+  <main class="panel" role="region" aria-label="Settings">
+    <h1>Settings</h1>
 
-	<script src="options.js"></script>
+    <section class="section" aria-label="Notifications">
+      <div class="row">
+        <div>
+          <div class="label">Wake-up Notification</div>
+          <div class="note">Show a notification when tabs reopen.</div>
+        </div>
+        <label class="toggle" for="notif">
+          <input class="toggle-input" id="notif" type="checkbox" />
+          <span class="toggle-track" aria-hidden="true"></span>
+        </label>
+      </div>
+    </section>
+
+    <hr>
+
+    <section class="section" aria-label="Danger Zone">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <div class="label">Clear All Snoozes</div>
+          <div class="note">Deletes every scheduled tab. This cannot be undone.</div>
+        </div>
+        <button class="btn danger" id="deleteAll" type="button">Delete All</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="options.js"></script>
 </body>
 </html>

@@ -1,46 +1,236 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>Reopen Tab Later</title>
-	<style>
-		body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background:#F9FAFB; color:#0F172A; }
-		.container { width: 280px; padding: 0; }
-		.grid { display: flex; flex-direction: column; gap: 0; }
-		.tile { 
-			background: #fff; 
-			border: 1px solid #E5E7EB; 
-			border-bottom: none;
-			padding: 16px 20px; 
-			text-align: center; 
-			cursor: pointer; 
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 16px;
-			font-weight: 500;
-			color: #5a5a5a;
-			letter-spacing: 0.04em;
-			line-height: 1.2;
-			min-height: 48px;
-		}
-		.tile:last-child { border-bottom: 1px solid #E5E7EB; }
-		.tile:hover { background:#F3F4F6; }
-		.footer { display:flex; justify-content:space-between; margin:20px; }
-		.link { 
-			color:#0F172A; text-decoration:none; font-size:12px; 
-		}
-	</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Postpone Tab Until…</title>
+  <style>
+    :root{
+      --bg:#1B1B1F; --on-hi:rgba(255,255,255,.92);
+      --on:rgba(255,255,255,.86); --on-med:rgba(255,255,255,.65);
+      --div:rgba(255,255,255,.08); --accent:#F2C44A;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: transparent;
+    }
+
+    /* Panel */
+      .popup{
+        width:340px;
+        color:var(--on);
+        background: rgba(27,27,31,.86);
+        -webkit-backdrop-filter: saturate(120%) blur(18px);
+        backdrop-filter: saturate(120%) blur(18px);
+        overflow:auto;
+        padding:16px 18px 0;
+        /* Softer elevation without changing the container shape */
+        box-shadow:
+          0 12px 32px rgba(0,0,0,.32),
+          0 2px 8px rgba(0,0,0,.22),
+          inset 0 0 0 1px rgba(255,255,255,.06);
+      }
+
+    /* Header aligns with content column */
+    .header{
+      margin:0 0 10px 29px; 
+      font:600 14px/22px Inter, system-ui;
+      color:rgba(255,255,255,.94);
+    }
+
+    .list{ margin:0; padding:0; list-style:none; }
+
+    /* Row */
+    .item{
+      position:relative;
+      display:flex; align-items:center; gap:12px; /* center icon + text vertically */
+      padding:12px 0; min-height:56px;
+      cursor:pointer; border-radius:10px;
+      padding-left:8px; margin-left:-8px;
+      transition:background-color .14s ease, transform .06s ease, box-shadow .14s ease;
+      background: none; /* flatter default; rely on hover/active */
+    }
+    .item:hover{ background: rgba(255,255,255,.035); }
+    .item:active{ background: rgba(255,255,255,.07); transform: translateY(.5px); }
+
+    /* Pretty focus ring that respects radius */
+    .item:focus-visible{
+      outline: none;
+      box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px rgba(242,196,74,.22);
+    }
+
+    /* Inset hairline divider */
+    .item + .item::before{
+      content:""; position:absolute; left:44px; right:18px; bottom:100%;
+      height:1px; background:rgba(255,255,255,.06);
+      transform:scaleY(.5); transform-origin:0 0;
+    }
+
+    /* Icon column; now using asset 16.png */
+    .icon{
+      flex:0 0 16px; width:16px; height:16px;
+      background: url('icons/16.png') center / contain no-repeat;
+      border-radius:0; box-shadow:none;
+      margin-left:2px; margin-top:0; /* optical alignment */
+    }
+    .item:hover .icon{ filter:saturate(120%) brightness(1.05); }
+
+    /* Text column */
+    .text{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+    .title{
+      font:600 16px/20px Inter, system-ui;
+      color:rgba(255,255,255,.92);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .title .time{ font-weight:500; opacity:.72; }
+    .meta{ font:500 13.5px/18px Inter, system-ui; color:var(--on-med); cursor:default; }
+
+    /* Footer */
+    .footer{
+      position: sticky; bottom:0;
+      margin-top:18px; height:52px;
+      background: linear-gradient(to bottom, rgba(255,255,255,.02), rgba(0,0,0,.08));
+      border-top:1px solid rgba(255,255,255,.12);
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0; /* true edge pinning; inner padding on links */
+    }
+    .footer a{
+      display:flex; align-items:center; gap:8px;
+      padding:10px 12px; border-radius:10px;
+      font:500 12px/1 Inter, system-ui;
+      color:rgba(255,255,255,.92); text-decoration:none;
+      transition:background-color .12s ease, transform .06s ease, color .12s ease, filter .12s ease;
+      flex:1 1 0; min-width:0; /* two flexible halves */
+      white-space:nowrap; /* prevent label wrapping */
+    }
+    .footer a:first-child{ justify-content:flex-start; padding-left:1px; }
+    .footer a:last-child{ justify-content:flex-end; padding-right:1px; }
+    .footer a:hover{ background:rgba(255,255,255,.04); color:#fff; }
+    .footer a:active{ background:rgba(255,255,255,.08); transform:translateY(.5px); }
+    .footer a span{ overflow:hidden; text-overflow:ellipsis; }
+
+    
+
+    .foot-ico{
+      width:18px; height:18px; display:block;
+      object-fit:contain; /* works for <img> assets */
+    }
+
+    /* Modal overlay for custom date/time picker */
+    .overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.45); z-index:999; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+    .overlay.open{ display:flex; }
+    .sheet{
+      width:100%; max-width:320px; color:var(--on);
+      background: rgba(27,27,31,.95);
+      -webkit-backdrop-filter: saturate(120%) blur(18px);
+      backdrop-filter: saturate(120%) blur(18px);
+      border-radius:12px; padding:14px 14px 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.42), 0 2px 8px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.06);
+    }
+    .sheet .h{ margin:0 0 2px 0; font:700 16px/22px Inter, system-ui; color:var(--on-hi); }
+    .sheet .sub{ margin:0 0 10px 0; font:500 13px/18px Inter, system-ui; color:var(--on-med); }
+    .label{ display:block; margin:8px 0 6px; font:600 12px/1 Inter, system-ui; color:var(--on-med); }
+    .input{ width:100%; height:36px; padding:6px 10px; border-radius:10px; background:rgba(255,255,255,.06); color:#fff; border:1px solid rgba(255,255,255,.14); outline:none; transition:border-color .12s ease, background-color .12s ease; }
+    .input:focus{ border-color: var(--accent); background: rgba(255,255,255,.09); }
+    .actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:10px; }
+    .btn{ appearance:none; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:var(--on-hi); border-radius:10px; padding:8px 12px; font:600 12px/1 Inter, system-ui; cursor:pointer; transition: background-color .12s ease, transform .06s ease, border-color .12s ease, color .12s ease; }
+    .btn:hover{ background:rgba(255,255,255,.09); }
+    .btn:active{ transform: translateY(.5px); }
+    .btn.primary{ background: var(--accent); color:#1B1B1F; border-color: rgba(0,0,0,.0); }
+    .btn.primary:hover{ filter:saturate(110%) brightness(1.02); }
+    .btn[disabled]{ opacity:.5; cursor:default; filter: grayscale(40%); }
+    .btn:focus-visible, .input:focus-visible{ outline: none; box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px rgba(242,196,74,.22); }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      .item, .footer a{ transition:none }
+    }
+  </style>
 </head>
 <body>
-	<div class="container">
-		<div class="grid" id="grid"></div>
-		<div class="footer">
-			<a class="link" id="sleeping" href="#">Postponed Tabs</a>
-			<a class="link" id="settings" href="#">⛯ Settings</a>
-		</div>
-	</div>
-	<script src="popup.js"></script>
+  <div class="popup" role="dialog" aria-label="Postpone Tab Until">
+    <h2 class="header">Reopen Tab…</h2>
+
+    <ul class="list" id="list">
+      <li class="item" id="row-hour" tabindex="0" role="button" aria-label="Postpone for one hour">
+        <div class="icon" aria-hidden="true"></div>
+        <div class="text">
+          <div class="title">In 1 Hour</div>
+          <div class="meta" id="meta-hour"></div>
+        </div>
+      </li>
+
+      <li class="item" id="row-evening" tabindex="0" role="button" aria-label="Postpone to this evening">
+        <div class="icon" aria-hidden="true"></div>
+        <div class="text">
+          <div class="title">This Evening</div>
+          <div class="meta" id="meta-evening"></div>
+        </div>
+      </li>
+
+      <li class="item" id="row-tomorrow" tabindex="0" role="button" aria-label="Postpone to tomorrow morning">
+        <div class="icon" aria-hidden="true"></div>
+        <div class="text">
+          <div class="title">Tomorrow Morning</div>
+          <div class="meta" id="meta-tomorrow"></div>
+        </div>
+      </li>
+
+      <li class="item" id="row-weekend" tabindex="0" role="button" aria-label="Postpone to this weekend">
+        <div class="icon" aria-hidden="true"></div>
+        <div class="text">
+          <div class="title">This Weekend</div>
+          <div class="meta" id="meta-weekend"></div>
+        </div>
+      </li>
+
+      <li class="item" id="row-nextweek" tabindex="0" role="button" aria-label="Postpone to next week">
+        <div class="icon" aria-hidden="true"></div>
+        <div class="text">
+          <div class="title">Next Week</div>
+          <div class="meta" id="meta-next-week"></div>
+        </div>
+      </li>
+
+      <li class="item" id="row-pick" tabindex="0" role="button" aria-label="Pick a date and time">
+        <div class="icon" aria-hidden="true"></div>
+        <div class="text">
+          <div class="title">Pick a Date &amp; Time</div>
+          <div class="meta">Whenever you want</div>
+        </div>
+      </li>
+    </ul>
+
+    <div class="footer" aria-label="Utilities">
+      <a href="#" id="view-snoozed" aria-label="View Snoozed Tabs">
+        <img class="foot-ico" src="icons/posponed_tabs.png" alt="" aria-hidden="true" />
+        <span>View Snoozed Tabs</span>
+      </a>
+      <a href="#" id="settings" aria-label="Open Settings">
+        <img class="foot-ico" src="icons/settings.png" alt="" aria-hidden="true" />
+        <span>Settings</span>
+      </a>
+    </div>
+  </div>
+  
+  <!-- Date/Time modal overlay -->
+  <div class="overlay" id="sched-overlay" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sched-title" aria-describedby="sched-desc">
+      <h3 class="h" id="sched-title">Schedule Tab</h3>
+      <p class="sub" id="sched-desc">Pick a date and time to reopen.</p>
+      <label class="label" for="sched-date">Date</label>
+      <input class="input" id="sched-date" type="date" />
+      <label class="label" for="sched-time">Time</label>
+      <input class="input" id="sched-time" type="time" step="900" />
+      <div class="actions">
+        <button class="btn" id="btn-cancel" type="button">Cancel</button>
+        <button class="btn primary" id="btn-schedule" type="button" disabled>Schedule</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
 </body>
 </html>

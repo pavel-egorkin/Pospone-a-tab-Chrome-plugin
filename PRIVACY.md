@@ -4,7 +4,7 @@ This extension works entirely on your device. We do not run servers and we do no
 
 ### What we store (locally, on your device)
 - Scheduled tabs ("snoozes"): the page URL, optional page title, when you created it, and when it should reopen
-- Recurring schedules: the type (daily/weekly/monthly), selected days or day-of-month, hour and minute, the URL, optional title, and the next time it should run
+<!-- Recurring schedules removed in simplified version -->
 - Settings: simple options like whether to show a wake-up notification and your preferred hours for presets
 
 ### What we do not collect
@@ -21,13 +21,12 @@ This extension works entirely on your device. We do not run servers and we do no
 
 ### How we use the data
 - To reopen your saved tabs at the time you chose
-- To show your list of upcoming tabs and any recurring schedules
-- To compute the next time for presets and recurring items
+- To show your list of upcoming tabs
+- To compute the next time for presets
 - To optionally show a desktop notification when a tab wakes
 
 ### Permissions and why they are needed
 - `tabs`: read the current tab's URL/title to save it; open/close tabs when waking
-- `activeTab`: access the active tab when you click the extension
 - `storage`: save your schedules and settings locally
 - `alarms`: wake up at the right time
 - `notifications`: show a small notification when a tab reopens (optional)

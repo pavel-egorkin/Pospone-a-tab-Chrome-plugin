@@ -6,21 +6,17 @@
 // -----------------------------
 const STORAGE_KEYS = {
   snoozes: 'snoozes',
-  recurrences: 'recurrences',
   settings: 'settings',
   meta: 'meta'
 };
 
-const CAPACITY_LIMIT = 500; // total snoozes + recurrences
+const CAPACITY_LIMIT = 500; // total snoozes
 
 const DEFAULT_SETTINGS = {
   wakeNotificationEnabled: true,
-  tomorrowStartHour: 8, // 08:00
-  eveningStartHour: 19, // 19:00
-  laterTodayOffsetHours: 3,
-  somedayMonths: 3,
-  defaultPickerHour: 8,
-  weekStartsOnMonday: true
+  tomorrowStartHour: 9, // 09:00
+  eveningStartHour: 18, // 18:00
+  defaultPickerHour: 9
 };
 
 // Track last-active normal window
@@ -73,32 +69,30 @@ function setSettings(settings) {
 
 function getAll() {
   return new Promise((resolve) => {
-    chrome.storage.local.get([STORAGE_KEYS.snoozes, STORAGE_KEYS.recurrences, STORAGE_KEYS.meta], (res) => {
+    chrome.storage.local.get([STORAGE_KEYS.snoozes, STORAGE_KEYS.meta], (res) => {
       resolve({
         snoozes: res[STORAGE_KEYS.snoozes] || [],
-        recurrences: res[STORAGE_KEYS.recurrences] || [],
         meta: res[STORAGE_KEYS.meta] || {}
       });
     });
   });
 }
 
-function setAll({ snoozes, recurrences, meta }) {
+function setAll({ snoozes, meta }) {
   const payload = {};
   if (snoozes) payload[STORAGE_KEYS.snoozes] = snoozes;
-  if (recurrences) payload[STORAGE_KEYS.recurrences] = recurrences;
   if (meta) payload[STORAGE_KEYS.meta] = meta;
   return new Promise((resolve) => chrome.storage.local.set(payload, resolve));
 }
 
 async function getCounts() {
-  const { snoozes, recurrences } = await getAll();
-  return { snoozesCount: snoozes.length, recurrencesCount: recurrences.length };
+  const { snoozes } = await getAll();
+  return { snoozesCount: snoozes.length };
 }
 
 async function ensureCapacity(extraItems = 1) {
-  const { snoozesCount, recurrencesCount } = await getCounts();
-  const total = snoozesCount + recurrencesCount + extraItems;
+  const { snoozesCount } = await getCounts();
+  const total = snoozesCount + extraItems;
   if (total > CAPACITY_LIMIT) {
     throw new Error(`Capacity exceeded (${total}/${CAPACITY_LIMIT}). Delete some items first.`);
   }
@@ -137,16 +131,8 @@ async function resolvePreset(preset) {
   }
 
   switch (preset) {
-    case '1-minute': {
-      target = new Date(now.getTime() + 60 * 1000); // 60 seconds = 1 minute
-      break;
-    }
-    case 'later-today': {
-      target = new Date(now.getTime() + s.laterTodayOffsetHours * 60 * 60 * 1000);
-      if (target > endOfToday) {
-        const t = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-        target = setLocalHhMm(t, s.tomorrowStartHour, 0);
-      }
+    case 'in-1-hour': {
+      target = new Date(now.getTime() + 60 * 60 * 1000);
       break;
     }
     case 'this-evening': {
@@ -157,7 +143,7 @@ async function resolvePreset(preset) {
       }
       break;
     }
-    case 'tomorrow': {
+    case 'tomorrow-morning': {
       const t = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
       target = setLocalHhMm(t, s.tomorrowStartHour, 0);
       break;
@@ -166,27 +152,8 @@ async function resolvePreset(preset) {
       target = nextMonday(now);
       break;
     }
-    case 'next-weekend': {
+    case 'this-weekend': {
       target = nextSaturday(now);
-      break;
-    }
-    case 'in-a-month': {
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      d.setMonth(d.getMonth() + 1);
-      // if day invalid (e.g., 31st not present), push to 1st
-      if (d.getDate() !== now.getDate()) {
-        d.setDate(1);
-      }
-      target = setLocalHhMm(d, s.defaultPickerHour, 0);
-      break;
-    }
-    case 'someday': {
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      d.setMonth(d.getMonth() + s.somedayMonths);
-      if (d.getDate() !== now.getDate()) {
-        d.setDate(1);
-      }
-      target = setLocalHhMm(d, s.defaultPickerHour, 0);
       break;
     }
     default:
@@ -197,66 +164,14 @@ async function resolvePreset(preset) {
   return toIsoUtc(target);
 }
 
-function computeNextWeeklyOccurrence(daysOfWeek, hour, minute, fromDate = new Date()) {
-  const sorted = [...daysOfWeek].sort((a, b) => a - b);
-  const start = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(start.getTime());
-    d.setDate(d.getDate() + i);
-    if (sorted.includes(d.getDay())) {
-      const candidate = setLocalHhMm(d, hour, minute);
-      if (candidate > fromDate) return candidate;
-    }
-  }
-  // fallback next week same first weekday
-  const d = new Date(start.getTime());
-  d.setDate(d.getDate() + 7);
-  const wd = sorted[0] ?? 1;
-  while (d.getDay() !== wd) d.setDate(d.getDate() + 1);
-  return setLocalHhMm(d, hour, minute);
-}
-
-function computeNextMonthlyOccurrence(dayOfMonth, hour, minute, fromDate = new Date()) {
-  const current = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
-  // try this month
-  let candidate = new Date(current.getFullYear(), current.getMonth(), Math.min(dayOfMonth, 28));
-  if (dayOfMonth >= 29) {
-    const tmp = new Date(current.getFullYear(), current.getMonth(), dayOfMonth);
-    if (tmp.getMonth() !== current.getMonth()) {
-      candidate = new Date(current.getFullYear(), current.getMonth(), 1); // rule: use 1st if 29–31 invalid
-    } else {
-      candidate = tmp;
-    }
-  }
-  candidate = setLocalHhMm(candidate, hour, minute);
-  if (candidate > fromDate) return candidate;
-  // next month
-  const nextM = new Date(current.getFullYear(), current.getMonth() + 1, 1);
-  let cand2 = new Date(nextM.getFullYear(), nextM.getMonth(), Math.min(dayOfMonth, 28));
-  if (dayOfMonth >= 29) {
-    const tmp2 = new Date(nextM.getFullYear(), nextM.getMonth(), dayOfMonth);
-    if (tmp2.getMonth() !== nextM.getMonth()) {
-      cand2 = new Date(nextM.getFullYear(), nextM.getMonth(), 1);
-    } else {
-      cand2 = tmp2;
-    }
-  }
-  return setLocalHhMm(cand2, hour, minute);
-}
-
-function computeNextDaily(hour, minute, fromDate = new Date()) {
-  const today = setLocalHhMm(fromDate, hour, minute);
-  if (today > fromDate) return today;
-  const t = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate() + 1);
-  return setLocalHhMm(t, hour, minute);
-}
+// Recurrence helpers removed
 
 // -----------------------------
 // Scheduler & storage operations
 // -----------------------------
 async function updateBadge() {
-  const { snoozes, recurrences } = await getAll();
-  const total = (snoozes?.length || 0) + (recurrences?.length || 0);
+  const { snoozes } = await getAll();
+  const total = (snoozes?.length || 0);
   await chrome.action.setBadgeBackgroundColor({ color: '#0F172A' });
   await chrome.action.setBadgeText({ text: total > 0 ? String(total) : '' });
 }
@@ -266,10 +181,7 @@ async function createAlarmForSnooze(snooze) {
   await chrome.alarms.create(`snooze:${snooze.id}`, { when });
 }
 
-async function createAlarmForRecurrence(rec) {
-  const when = fromIsoUtc(rec.nextFireAt).getTime();
-  await chrome.alarms.create(`recur:${rec.id}`, { when });
-}
+// Recurrence alarms removed
 
 async function openUrlInWindow(url) {
   try {
@@ -350,37 +262,7 @@ async function handleSnoozeFire(snoozeIds) {
   }
 }
 
-async function handleRecurrenceFire(recIds) {
-  const { recurrences } = await getAll();
-  const fired = recurrences.filter(r => recIds.includes(r.id));
-
-  for (const r of fired) {
-    await openUrlInWindow(r.url);
-    // compute next and reschedule
-    let next;
-    const now = new Date();
-    if (r.kind === 'daily') {
-      next = computeNextDaily(r.hour, r.minute, now);
-    } else if (r.kind === 'weekly' && Array.isArray(r.daysOfWeek) && r.daysOfWeek.length > 0) {
-      next = computeNextWeeklyOccurrence(r.daysOfWeek, r.hour, r.minute, now);
-    } else if (r.kind === 'monthly' && typeof r.dayOfMonth === 'number') {
-      next = computeNextMonthlyOccurrence(r.dayOfMonth, r.hour, r.minute, now);
-    } else {
-      // invalid config; skip
-      continue;
-    }
-    r.nextFireAt = toIsoUtc(next);
-    await createAlarmForRecurrence(r);
-  }
-
-  // persist updated recurrences
-  const updated = recurrences.map(r => {
-    const u = fired.find(f => f.id === r.id);
-    return u ? r : r;
-  });
-  await setAll({ recurrences: recurrences });
-  await updateBadge();
-}
+// Recurrence handling removed
 
 // -----------------------------
 // Messaging API
@@ -420,10 +302,17 @@ async function handleMessage(request, sender) {
         const { snoozes } = await getAll();
         return { ok: true, data: snoozes };
       }
-      case 'listRecurrences': {
-        const { recurrences } = await getAll();
-        return { ok: true, data: recurrences };
+      case 'clearAllSnoozes': {
+        const { snoozes } = await getAll();
+        // Clear all related alarms
+        for (const s of snoozes) {
+          try { await chrome.alarms.clear(`snooze:${s.id}`); } catch (e) { /* ignore */ }
+        }
+        await setAll({ snoozes: [] });
+        await updateBadge();
+        return { ok: true };
       }
+      // Recurrences removed
       case 'deleteSnooze': {
         const { id } = payload;
         const { snoozes } = await getAll();
@@ -472,32 +361,7 @@ async function handleMessage(request, sender) {
         await updateBadge();
         return { ok: true, data: s };
       }
-      case 'createRecurrence': {
-        const { kind, daysOfWeek, dayOfMonth, hour, minute, url, title } = payload;
-        await ensureCapacity(1);
-        const now = new Date();
-        let next;
-        if (kind === 'daily') next = computeNextDaily(hour, minute, now);
-        else if (kind === 'weekly') next = computeNextWeeklyOccurrence(daysOfWeek || [], hour, minute, now);
-        else if (kind === 'monthly') next = computeNextMonthlyOccurrence(dayOfMonth, hour, minute, now);
-        else throw new Error('Invalid recurrence kind');
-        const r = { id: generateId(), kind, daysOfWeek, dayOfMonth, hour, minute, url, title, nextFireAt: toIsoUtc(next) };
-        const store = await getAll();
-        store.recurrences.push(r);
-        await setAll(store);
-        await createAlarmForRecurrence(r);
-        await updateBadge();
-        return { ok: true, data: r };
-      }
-      case 'deleteRecurrence': {
-        const { id } = payload;
-        const store = await getAll();
-        store.recurrences = store.recurrences.filter(r => r.id !== id);
-        await setAll(store);
-        await chrome.alarms.clear(`recur:${id}`);
-        await updateBadge();
-        return { ok: true };
-      }
+      // Recurrence creation/deletion removed
       case 'resolvePreset': {
         const { preset } = payload;
         const iso = await resolvePreset(preset);
@@ -521,7 +385,7 @@ async function handleMessage(request, sender) {
           const d = setLocalHhMm(t, when.getHours(), when.getMinutes());
           fireAtIso = toIsoUtc(clampToFuture(d));
         } else {
-          fireAtIso = await resolvePreset('later-today');
+          fireAtIso = await resolvePreset('in-1-hour');
         }
         return await handleMessage({ type: 'createSnooze', payload: { url, title, fireAtIso, source: last } });
       }
@@ -552,8 +416,8 @@ chrome.commands.onCommand.addListener(async (command) => {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     const url = tab?.url || 'chrome://newtab/';
     const title = tab?.title || 'Tab';
-    const fireAtIso = await resolvePreset('later-today');
-    const result = await handleMessage({ type: 'createSnooze', payload: { url, title, fireAtIso, source: { kind: 'preset', preset: 'later-today' } } });
+    const fireAtIso = await resolvePreset('in-1-hour');
+    const result = await handleMessage({ type: 'createSnooze', payload: { url, title, fireAtIso, source: { kind: 'preset', preset: 'in-1-hour' } } });
     // Close the tab after successfully creating the snooze
     if (result.ok && tab?.id) {
       await chrome.tabs.remove(tab.id);
@@ -601,9 +465,6 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     if (alarm.name.startsWith('snooze:')) {
       const id = alarm.name.split(':')[1];
       await handleSnoozeFire([id]);
-    } else if (alarm.name.startsWith('recur:')) {
-      const id = alarm.name.split(':')[1];
-      await handleRecurrenceFire([id]);
     }
   } catch (e) {
     console.error('onAlarm error', e);
@@ -631,15 +492,6 @@ async function reconcile() {
   }
   // schedule remaining
   for (const s of futureSnoozes) await createAlarmForSnooze(s);
-
-  // Recurrences: fire missed once, then schedule next
-  const firedRecIds = [];
-  for (const r of store.recurrences) {
-    const t = fromIsoUtc(r.nextFireAt);
-    if (t <= now) firedRecIds.push(r.id);
-  }
-  if (firedRecIds.length > 0) await handleRecurrenceFire(firedRecIds);
-  for (const r of store.recurrences) await createAlarmForRecurrence(r);
 
   await updateBadge();
 }

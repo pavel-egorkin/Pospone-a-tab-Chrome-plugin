@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Archives / packaged builds
+*.zip
+
+# Node / tooling (not used, but for the sake of the future)
+node_modules/
+dist/
+
+# Editor files
+.idea/
+.vscode/
+*.log

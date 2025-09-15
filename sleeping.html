@@ -1,22 +1,157 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>Reopen Tab Later – Sleeping Tabs</title>
-	<style>
-		body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; background:#F9FAFB; color:#0F172A; }
-		h1 { margin: 0 0 12px; }
-		.group { margin-top: 16px; }
-		.card { background:#fff; border:1px solid #E5E7EB; border-radius:8px; padding:12px; margin:8px 0; display:flex; justify-content:space-between; align-items:center; }
-		.actions button { margin-left:8px; }
-		.fab { position: fixed; right: 20px; bottom: 20px; width: 48px; height: 48px; border-radius: 50%; background:#0F172A; color:#fff; border:none; font-size:24px; cursor:pointer; }
-	</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reopen Tab Later – Snoozed Tabs</title>
+  <style>
+    :root{
+      --bg:#0F1115; --panel:#1B1B1F; --on-hi:rgba(255,255,255,.92);
+      --on:rgba(255,255,255,.86); --on-med:rgba(255,255,255,.65);
+      --on-dim:rgba(255,255,255,.52);
+      --div:rgba(255,255,255,.08); --accent:#F2C44A;
+      --chip-bg: rgba(255,255,255,.06);
+      --chip-br: rgba(255,255,255,.14);
+      --rail: rgba(255,255,255,.06);
+    }
+    *{ box-sizing: border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0; padding:24px 18px 28px;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--on);
+      background: radial-gradient(1200px 600px at 10% -10%, #17171C 0%, #0F1115 55%), #0F1115;
+    }
+
+    /* Page container mirrors popup panel aesthetics */
+    .page{
+      max-width: 960px; margin:0 auto; padding:20px 22px 16px;
+      background: rgba(27,27,31,.86);
+      -webkit-backdrop-filter: saturate(120%) blur(18px);
+      backdrop-filter: saturate(120%) blur(18px);
+      border-radius:12px;
+      box-shadow:
+        0 14px 34px rgba(0,0,0,.35),
+        0 2px 8px rgba(0,0,0,.22),
+        inset 0 0 0 1px rgba(255,255,255,.06);
+    }
+
+    /* Header aligns with content column similar to popup */
+    .header{
+      margin:0 0 10px 11px; 
+      font:600 18px/24px Inter, system-ui;
+      color:rgba(255,255,255,.94);
+      letter-spacing:-.01em;
+    }
+
+    /* Groups and headings */
+    .group{ margin: 28px 0 14px; position:relative; padding-top:10px; }
+    /* stronger divider with generous spacing between sections */
+    .group + .group{ margin-top: 36px; }
+    .group + .group::before{
+      content:""; position:absolute; left:10px; right:10px; top:-12px; height:2px;
+      background: linear-gradient(90deg, transparent 0 8px, var(--rail) 8px calc(100% - 8px), transparent calc(100% - 8px));
+      border-radius:2px;
+    }
+    /* sticky, pill-style section headers for clear separation */
+    .group > h2{
+      position: sticky; top: 0; z-index: 5;
+      display:inline-block; margin: 0 0 10px 11px; padding:6px 10px;
+      font:800 11px/1 Inter, system-ui;
+      color: var(--on-hi);
+      text-transform: uppercase; letter-spacing: .08em;
+      background: var(--chip-bg);
+      border: 1px solid var(--chip-br);
+      border-radius: 999px;
+      -webkit-backdrop-filter: saturate(120%) blur(10px);
+      backdrop-filter: saturate(120%) blur(10px);
+      box-shadow: 0 6px 14px rgba(0,0,0,.25);
+    }
+
+    /* List row styled like popup items */
+    .card{
+      position:relative; display:flex; align-items:flex-start; gap:14px;
+      padding:14px 12px; min-height:56px; border-radius:12px;
+      transition:background-color .14s ease, transform .06s ease, box-shadow .14s ease, border-color .14s ease;
+      background: none; margin: 2px 2px; cursor: default;
+      border:1px solid transparent;
+    }
+    .card:hover{ background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.08); }
+    .card:active{ background: rgba(255,255,255,.07); transform: translateY(.5px); }
+    .card + .card::before{
+      content:""; position:absolute; left:11px; right:11px; bottom:100%;
+      height:1px; background:rgba(255,255,255,.06); transform:scaleY(.5); transform-origin:0 0;
+    }
+
+    .text{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+    .title{ font:600 15px/22px Inter, system-ui; color:rgba(255,255,255,.90); word-break:break-word; }
+    .meta{ font:500 13px/18px Inter, system-ui; color:var(--on-dim); }
+
+    /* Actions use popup-like buttons */
+    .actions{ display:flex; align-items:center; gap:8px; margin-left:auto; }
+    .btn{ appearance:none; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:var(--on-hi); border-radius:10px; padding:7px 12px; height:32px; font:600 12px/1 Inter, system-ui; cursor:pointer; transition: background-color .12s ease, transform .06s ease, border-color .12s ease, color .12s ease; }
+    .btn:hover{ background:rgba(255,255,255,.09); }
+    .btn:active{ transform: translateY(.5px); }
+    .btn.primary{ background: var(--accent); color:#1B1B1F; border-color: rgba(0,0,0,.0); }
+    .btn.primary:hover{ filter:saturate(110%) brightness(1.02); }
+    .btn.warn{ color:#FCA5A5; border-color: rgba(244,63,94,.28); background: rgba(244,63,94,.09); }
+    .btn.warn:hover{ background: rgba(244,63,94,.13); color: #fff; }
+
+    /* Modal overlay for rescheduling (parity with popup) */
+    .overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.45); z-index:999; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+    .overlay.open{ display:flex; }
+    .sheet{
+      width:100%; max-width:360px; color:var(--on);
+      background: rgba(27,27,31,.95);
+      -webkit-backdrop-filter: saturate(120%) blur(18px);
+      backdrop-filter: saturate(120%) blur(18px);
+      border-radius:12px; padding:14px 14px 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.42), 0 2px 8px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.06);
+    }
+    .sheet .h{ margin:0 0 2px 0; font:700 16px/22px Inter, system-ui; color:var(--on-hi); }
+    .sheet .sub{ margin:0 0 10px 0; font:500 13px/18px Inter, system-ui; color:var(--on-med); }
+    .label{ display:block; margin:8px 0 6px; font:600 12px/1 Inter, system-ui; color:var(--on-med); }
+    .input{ width:100%; height:36px; padding:6px 10px; border-radius:10px; background:rgba(255,255,255,.06); color:#fff; border:1px solid rgba(255,255,255,.14); outline:none; transition:border-color .12s ease, background-color .12s ease; }
+    .input:focus{ border-color: var(--accent); background: rgba(255,255,255,.09); }
+    .sheet .actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:10px; margin-left:0; }
+
+    /* Floating action button */
+    /* No floating action button on this page */
+
+    /* Footer actions */
+    .footer-actions{ position:relative; margin: 24px 6px 6px; padding-top:16px; display:flex; gap:10px; justify-content:flex-end; }
+    .footer-actions::before{ content:""; position:absolute; left:6px; right:6px; top:0; height:1px; background: rgba(255,255,255,.08); }
+    .btn.block{ width:100%; height:40px; font-size:13px; }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      .card, .btn, .fab{ transition: none; }
+    }
+  </style>
 </head>
 <body>
-	<h1>Sleeping Tabs</h1>
-	<div id="lists"></div>
-	<button class="fab" id="fab">+</button>
-	<script src="sleeping.js"></script>
+  <main class="page" role="main">
+    <h1 class="header">Snoozed Tabs</h1>
+    <div id="lists"></div>
+    <div class="footer-actions">
+      <button class="btn warn block" id="btn-clear-all" type="button" disabled>Clear All</button>
+    </div>
+  </main>
+  <!-- Reschedule modal overlay -->
+  <div class="overlay" id="resched-overlay" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="resched-title" aria-describedby="resched-desc">
+      <h3 class="h" id="resched-title">Reschedule</h3>
+      <p class="sub" id="resched-desc">Pick a new date and time.</p>
+      <label class="label" for="resched-date">Date</label>
+      <input class="input" id="resched-date" type="date" />
+      <label class="label" for="resched-time">Time</label>
+      <input class="input" id="resched-time" type="time" step="900" />
+      <div class="actions">
+        <button class="btn" id="btn-cancel" type="button">Cancel</button>
+        <button class="btn primary" id="btn-reschedule" type="button" disabled>Reschedule</button>
+      </div>
+    </div>
+  </div>
+  <script src="sleeping.js"></script>
 </body>
 </html>
