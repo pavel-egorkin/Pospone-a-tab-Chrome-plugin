@@ -1,6 +1,6 @@
 # Reopen Tab Later
 
-Hide a tab now and get it back exactly when you want. A lightweight Manifest V3 extension for Chromium browsers.
+Hide a tab now and get it back exactly when you want. 
 
 — Snooze the current tab using quick presets or pick an exact date and time. Woken tabs open as background tabs in your last normal window, with an optional desktop notification.
 
@@ -88,5 +88,9 @@ See PRIVACY: `PRIVACY.md`
 ## Version
 `manifest.json` version: 1.0.0
 
+A lightweight Manifest V3 extension for Chromium browsers.
+
+
+[by Pavel Egorkin](https://pavelegorkin.com)
 ## License
 MIT
