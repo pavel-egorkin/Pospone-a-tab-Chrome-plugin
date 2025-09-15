@@ -4,7 +4,7 @@ Hide a tab now and get it back exactly when you want.
 
 — Snooze the current tab using quick presets or pick an exact date and time. Woken tabs open as background tabs in your last normal window, with an optional desktop notification.
 
-##[Install from chrome store](https://chromewebstore.google.com/detail/reopen-tab-later/llfdlmiaajdjjhdiodddjhmojijkifnp)
+[Install from chrome store](https://chromewebstore.google.com/detail/reopen-tab-later/llfdlmiaajdjjhdiodddjhmojijkifnp)
 
 ## Features
 - Quick presets in the popup: In 1 Hour, This Evening, Tomorrow Morning, This Weekend, Next Week
